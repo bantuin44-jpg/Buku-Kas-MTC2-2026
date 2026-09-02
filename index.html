@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Kas Perumahan Mutiara Cempaka Tahap II Periode Tahun 2026</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+  <header class="bg-emerald-700 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard Kas Perumahan</h1>
+          <p class="text-emerald-100 text-sm mt-1">Mutiara Cempaka Tahap II — Periode Tahun 2026</p>
+        </div>
+        <div class="bg-emerald-800/80 backdrop-blur rounded-xl p-4 flex items-center gap-4 border border-emerald-600">
+          <div class="p-3 bg-emerald-500/20 rounded-lg text-emerald-200">
+            <i class="fa-solid me-1 fa-wallet text-2xl"></i>
+          </div>
+          <div>
+            <p class="text-xs text-emerald-200 uppercase font-semibold tracking-wider">Saldo Terakhir Kas</p>
+            <p id="saldo-utama" class="text-2xl font-black text-white">Rp 0</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+
+    <section id="ringkasan-cards" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <p class="text-sm font-medium text-slate-500">Sisa Saldo 2025</p>
+        <p id="saldo-2025" class="text-2xl font-bold text-slate-900 mt-2">Rp 0</p>
+      </div>
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <p class="text-sm font-medium text-slate-500">Total Pemasukan (2026)</p>
+        <p id="total-masuk" class="text-2xl font-bold text-emerald-600 mt-2">Rp 0</p>
+      </div>
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <p class="text-sm font-medium text-slate-500">Total Pengeluaran (2026)</p>
+        <p id="total-keluar" class="text-2xl font-bold text-rose-600 mt-2">Rp 0</p>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+      <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Catatan Status Iuran Warga</h2>
+          <p class="text-xs text-slate-500">Daftar kelengkapan pembayaran iuran bulanan warga</p>
+        </div>
+        <div class="relative max-w-xs w-full">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input type="text" id="search-input" onkeyup="filterWarga()" placeholder="Cari nama warga..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50 border-b border-slate-200 font-semibold text-slate-600 uppercase tracking-wider">
+            <tr>
+              <th class="px-4 py-3">No</th>
+              <th class="px-4 py-3 min-w-[140px]">Nama Warga</th>
+              <th class="px-2 py-3 text-center">Jan</th>
+              <th class="px-2 py-3 text-center">Feb</th>
+              <th class="px-2 py-3 text-center">Mar</th>
+              <th class="px-2 py-3 text-center">Apr</th>
+              <th class="px-2 py-3 text-center">Mei</th>
+              <th class="px-2 py-3 text-center">Jun</th>
+              <th class="px-2 py-3 text-center">Jul</th>
+              <th class="px-2 py-3 text-center">Agt</th>
+              <th class="px-2 py-3 text-center">Sep</th>
+              <th class="px-2 py-3 text-center">Okt</th>
+              <th class="px-2 py-3 text-center">Nov</th>
+              <th class="px-2 py-3 text-center">Des</th>
+            </tr>
+          </thead>
+          <tbody id="tabel-warga-body" class="divide-y divide-slate-100">
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+      <div class="p-6 border-b border-slate-100">
+        <h2 class="text-lg font-bold text-slate-900">Buku Kas Tulis (Mutasi Transaksi)</h2>
+        <p class="text-xs text-slate-500">Rincian masuk dan keluar dana kas perumahan</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 border-b border-slate-200 font-semibold text-slate-600">
+            <tr>
+              <th class="px-6 py-3">Bulan</th>
+              <th class="px-6 py-3">Keterangan</th>
+              <th class="px-6 py-3 text-right">Debet (Masuk)</th>
+              <th class="px-6 py-3 text-right">Kredit (Keluar)</th>
+              <th class="px-6 py-3 text-right">Saldo</th>
+            </tr>
+          </thead>
+          <tbody id="tabel-kas-body" class="divide-y divide-slate-100">
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+    <p>&copy; 2026 Perumahan Mutiara Cempaka Tahap II. Realtime Database Integration.</p>
+  </footer>
+
+  <script>
+    const firebaseConfig = {
+      databaseURL: "https://kas-mtc-g6-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function formatRupiah(val) {
+      if (val === null || val === undefined) return '-';
+      return 'Rp ' + Number(val).toLocaleString('id-ID');
+    }
+
+    db.ref('/').on('value', snapshot => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      if (data.info) {
+        document.getElementById('saldo-utama').innerText = formatRupiah(data.info.saldo_terakhir);
+        document.getElementById('saldo-2025').innerText = formatRupiah(data.info.sisa_saldo_2025);
+      }
+
+      if (data.buku_kas) {
+        let totalDebet = 0;
+        let totalKredit = 0;
+        const kasBody = document.getElementById('tabel-kas-body');
+        kasBody.innerHTML = '';
+
+        data.buku_kas.forEach(item => {
+          totalDebet += item.debet || 0;
+          totalKredit += item.kredit || 0;
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-50/80 transition-colors";
+          tr.innerHTML = `
+            <td class="px-6 py-3 font-medium text-slate-900">${item.bulan || ''}</td>
+            <td class="px-6 py-3 text-slate-700">${item.keterangan || ''}</td>
+            <td class="px-6 py-3 text-right text-emerald-600 font-semibold">${item.debet ? formatRupiah(item.debet) : '-'}</td>
+            <td class="px-6 py-3 text-right text-rose-600 font-semibold">${item.kredit ? formatRupiah(item.kredit) : '-'}</td>
+            <td class="px-6 py-3 text-right font-bold text-slate-800">${item.saldo ? formatRupiah(item.saldo) : '-'}</td>
+          `;
+          kasBody.appendChild(tr);
+        });
+
+        document.getElementById('total-masuk').innerText = formatRupiah(totalDebet);
+        document.getElementById('total-keluar').innerText = formatRupiah(totalKredit);
+      }
+
+      if (data.warga) {
+        window.wargaData = data.warga;
+        renderWargaTabel(data.warga);
+      }
+    });
+
+    function renderWargaTabel(wargaList) {
+      const tbody = document.getElementById('tabel-warga-body');
+      tbody.innerHTML = '';
+
+      const bulanKeys = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+
+      wargaList.forEach(w => {
+        const tr = document.createElement('tr');
+        tr.className = "warga-row hover:bg-slate-50/80 transition-colors";
+
+        let statusCols = '';
+        bulanKeys.forEach(m => {
+          const status = w.pembayaran && w.pembayaran[m];
+          statusCols += `
+            <td class="px-2 py-3 text-center">
+              ${status 
+                ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold" title="Sudah Bayar"><i class="fa-solid fa-check"></i></span>' 
+                : '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-400 text-xs" title="Belum Bayar">-</span>'}
+            </td>
+          `;
+        });
+
+        tr.innerHTML = `
+          <td class="px-4 py-3 font-medium text-slate-400">${w.no}</td>
+          <td class="px-4 py-3 font-semibold text-slate-800 text-sm warga-nama">${w.nama}</td>
+          ${statusCols}
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterWarga() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      if (!window.wargaData) return;
+      const filtered = window.wargaData.filter(w => w.nama.toLowerCase().includes(q));
+      renderWargaTabel(filtered);
+    }
+  </script>
+</body>
+</html>
