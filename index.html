@@ -25,9 +25,10 @@
     }
   </script>
   
-  <!-- FontAwesome Icons & Chart.js -->
+  <!-- FontAwesome Icons & Highcharts 3D -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/highcharts-3d.js"></script>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -207,13 +208,11 @@
         <div class="lg:col-span-2 bg-slate-900/90 backdrop-blur-md rounded-3xl border border-slate-800/80 p-6 shadow-xl">
           <div class="flex items-center justify-between pb-4 border-b border-slate-800">
             <div>
-              <h3 class="text-base font-bold text-white">Grafik Mutasi Kas Bulanan</h3>
-              <p class="text-xs text-slate-400 mt-0.5">Visual perbandingan aliran Pemasukan (Debet) vs Pengeluaran (Kredit)</p>
+              <h3 class="text-base font-bold text-white">Grafik 3D Mutasi Kas Bulanan</h3>
+              <p class="text-xs text-slate-400 mt-0.5">Visual 3D perbandingan aliran Pemasukan (Debet) vs Pengeluaran (Kredit)</p>
             </div>
           </div>
-          <div class="h-80 w-full pt-4">
-            <canvas id="kasChart"></canvas>
-          </div>
+          <div id="kasChart" class="h-80 w-full pt-4"></div>
         </div>
 
         <!-- REVISED EXECUTIVE SUMMARY CARD -->
@@ -370,8 +369,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let chartInstance = null;
-
     function formatRupiah(val) {
       if (val === null || val === undefined) return '-';
       return 'Rp ' + Number(val).toLocaleString('id-ID');
@@ -477,51 +474,65 @@
       const debetData = labels.map(m => bulananData[m].debet);
       const kreditData = labels.map(m => bulananData[m].kredit);
 
-      const ctx = document.getElementById('kasChart').getContext('2d');
-      if (chartInstance) chartInstance.destroy();
-
-      chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Pemasukan (Debet)',
-              data: debetData,
-              backgroundColor: '#10b981',
-              borderRadius: 6
-            },
-            {
-              label: 'Pengeluaran (Kredit)',
-              data: kreditData,
-              backgroundColor: '#f43f5e',
-              borderRadius: 6
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { 
-              labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', weight: 'bold' } }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: '#1e293b' },
-              ticks: {
-                color: '#64748b',
-                callback: function(value) { return 'Rp ' + (value/1000) + 'rb'; }
-              }
-            },
-            x: { 
-              grid: { display: false },
-              ticks: { color: '#94a3b8' }
-            }
+      Highcharts.chart('kasChart', {
+        chart: {
+          type: 'column',
+          backgroundColor: 'transparent',
+          options3d: {
+            enabled: true,
+            alpha: 15,
+            beta: 15,
+            depth: 50,
+            viewDistance: 25
           }
-        }
+        },
+        title: { text: null },
+        tooltip: {
+          headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+          pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+            '<td style="padding:0"><b>Rp {point.y:,.0f}</b></td></tr>',
+          footerFormat: '</table>',
+          shared: true,
+          useHTML: true
+        },
+        xAxis: {
+          categories: labels,
+          labels: { style: { color: '#94a3b8', fontFamily: 'Plus Jakarta Sans', fontSize: '11px' } },
+          gridLineWidth: 0
+        },
+        yAxis: {
+          min: 0,
+          title: { text: null },
+          gridLineColor: '#1e293b',
+          labels: {
+            style: { color: '#64748b', fontFamily: 'Plus Jakarta Sans' },
+            formatter: function () { return 'Rp ' + (this.value / 1000) + 'rb'; }
+          }
+        },
+        legend: {
+          itemStyle: { color: '#94a3b8', fontFamily: 'Plus Jakarta Sans', fontWeight: 'bold' },
+          itemHoverStyle: { color: '#ffffff' }
+        },
+        plotOptions: {
+          column: {
+            depth: 25,
+            borderWidth: 0,
+            groupPadding: 0.15
+          }
+        },
+        series: [
+          {
+            name: 'Pemasukan (Debet)',
+            data: debetData,
+            color: '#10b981'
+          },
+          {
+            name: 'Pengeluaran (Kredit)',
+            data: kreditData,
+            color: '#f43f5e'
+          }
+        ],
+        credits: { enabled: false }
       });
     }
 
