@@ -574,27 +574,29 @@
       document.getElementById('btn-' + tabId).classList.add('tab-active');
     }
 
-    // Realtime Listener
-    db.ref('/').on('value', snapshot => {
-      const data = snapshot.val();
-      if (!data) return;
+    // Realtime Listener — dipisah per node agar cocok dengan Security Rules
+    // (root sengaja tidak dibaca supaya node log_admin tetap tertutup untuk publik)
+    db.ref('info').on('value', snap => {
+      const info = snap.val();
+      if (!info) return;
+      document.getElementById('saldo-utama').innerText = formatRupiah(info.saldo_terakhir);
+      document.getElementById('saldo-2025').innerText = formatRupiah(info.sisa_saldo_2025);
+    }, err => console.error('Gagal membaca info:', err.message));
 
-      if (data.info) {
-        document.getElementById('saldo-utama').innerText = formatRupiah(data.info.saldo_terakhir);
-        document.getElementById('saldo-2025').innerText = formatRupiah(data.info.sisa_saldo_2025);
-      }
+    db.ref('buku_kas').on('value', snap => {
+      const bukuKas = snap.val();
+      if (!bukuKas) return;
+      renderBukuKasAndChart(bukuKas);
+    }, err => console.error('Gagal membaca buku_kas:', err.message));
 
-      if (data.buku_kas) {
-        renderBukuKasAndChart(data.buku_kas);
-      }
-
-      if (data.warga) {
-        // simpan index asli agar penyimpanan ke Firebase menunjuk node yang benar
-        window.wargaData = data.warga.map((w, i) => Object.assign({}, w, { _idx: i }));
-        document.getElementById('badge-total-warga').innerText = `${data.warga.length} Warga`;
-        filterWarga();
-      }
-    });
+    db.ref('warga').on('value', snap => {
+      const warga = snap.val();
+      if (!warga) return;
+      // simpan index asli agar penyimpanan ke Firebase menunjuk node yang benar
+      window.wargaData = warga.map((w, i) => Object.assign({}, w, { _idx: i }));
+      document.getElementById('badge-total-warga').innerText = `${warga.length} Warga`;
+      filterWarga();
+    }, err => console.error('Gagal membaca warga:', err.message));
 
     function calculateCompliance(wargaList, selectedMonth = 'agustus') {
       if (!wargaList.length) return;
