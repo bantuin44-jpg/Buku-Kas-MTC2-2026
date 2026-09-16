@@ -33,6 +33,7 @@
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
   <style>
     .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
@@ -76,6 +77,22 @@
             <i class="fa-solid fa-print"></i>
             <span class="hidden sm:inline">Cetak Report</span>
           </button>
+
+          <!-- TOMBOL LOGIN / LOGOUT ADMIN -->
+          <button id="btn-login" onclick="openLoginModal()" class="px-3.5 py-2 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 text-xs font-bold border border-brand-500/30 transition flex items-center gap-2">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            <span class="hidden sm:inline">Login Admin</span>
+          </button>
+
+          <div id="admin-chip" class="hidden items-center gap-2">
+            <span class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-500/15 border border-brand-500/30 text-brand-400 text-[11px] font-bold">
+              <i class="fa-solid fa-user-shield"></i> <span id="admin-email">Admin</span>
+            </span>
+            <button onclick="doLogout()" class="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/30 transition flex items-center gap-2">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span class="hidden sm:inline">Keluar</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -292,6 +309,11 @@
             </div>
           </div>
 
+          <div id="admin-hint" class="hidden items-center gap-2.5 px-4 py-3 rounded-2xl bg-brand-500/10 border border-brand-500/30 text-xs text-brand-300 font-semibold no-print">
+            <i class="fa-solid fa-hand-pointer"></i>
+            Mode Admin aktif — klik ikon centang pada bulan mana pun untuk menandai warga sudah / belum membayar. Perubahan langsung tersimpan.
+          </div>
+
           <div class="flex items-center gap-4 text-xs pt-3 border-t border-slate-800/80">
             <span class="text-slate-400 font-medium">Ringkasan Filtered:</span>
             <span class="font-bold text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> <span id="count-lunas">0</span> Lunas</span>
@@ -355,6 +377,50 @@
 
   </main>
 
+  <!-- ===== MODAL LOGIN ADMIN ===== -->
+  <div id="login-modal" class="hidden fixed inset-0 z-[100] items-center justify-center p-4 no-print">
+    <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closeLoginModal()"></div>
+
+    <div class="relative w-full max-w-sm bg-gradient-to-b from-slate-800/95 to-slate-900/95 border border-slate-700/80 rounded-3xl shadow-2xl p-7">
+      <button onclick="closeLoginModal()" class="absolute top-4 right-4 w-8 h-8 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-500 to-teal-300 flex items-center justify-center text-slate-950 text-xl shadow-lg shadow-brand-500/20">
+        <i class="fa-solid fa-user-shield"></i>
+      </div>
+
+      <h3 class="text-xl font-black text-white mt-4">Login Admin Kas</h3>
+      <p class="text-xs text-slate-400 mt-1 leading-relaxed">Masuk untuk menandai warga yang sudah membayar iuran. Halaman publik tetap hanya bisa melihat.</p>
+
+      <div class="mt-6 space-y-3">
+        <div>
+          <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Email</label>
+          <input id="login-email" type="email" autocomplete="username" placeholder="admin@email.com"
+            class="mt-1.5 w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-brand-500 placeholder:text-slate-600">
+        </div>
+        <div>
+          <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Password</label>
+          <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••"
+            onkeydown="if(event.key==='Enter') doLogin()"
+            class="mt-1.5 w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-brand-500 placeholder:text-slate-600">
+        </div>
+
+        <p id="login-error" class="hidden text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/25 rounded-xl px-3 py-2"></p>
+
+        <button id="login-submit" onclick="doLogin()"
+          class="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 text-sm font-black transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk
+        </button>
+      </div>
+
+      <p class="text-[10px] text-slate-500 mt-4 text-center">Autentikasi aman via Firebase Authentication</p>
+    </div>
+  </div>
+
+  <!-- ===== TOAST NOTIFIKASI ===== -->
+  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-5 py-3 rounded-2xl border text-xs font-bold shadow-2xl no-print"></div>
+
   <footer class="bg-slate-950 border-t border-slate-800/80 py-10 text-center text-xs text-slate-500 no-print">
     <div class="max-w-7xl mx-auto px-4">
       <p class="font-extrabold text-slate-300 text-sm">Kas Mutiara Cempaka Tahap II &copy; 2026</p>
@@ -364,10 +430,136 @@
 
   <script>
     const firebaseConfig = {
+      // ⬇️ WAJIB DIISI: ambil dari Firebase Console → Project Settings → Your apps (Web app)
+      apiKey: "ISI_API_KEY_ANDA_DISINI",
+      authDomain: "kas-mtc-g6.firebaseapp.com",
+      projectId: "kas-mtc-g6",
       databaseURL: "https://kas-mtc-g6-default-rtdb.asia-southeast1.firebasedatabase.app/"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
+
+    // UID admin yang diizinkan mengubah data
+    const ADMIN_UID = "7LkQlOBTtLaKKRCJBZSvtvIvBC23";
+    let isAdmin = false;
+
+    /* ============ UI LOGIN ============ */
+    function openLoginModal() {
+      const m = document.getElementById('login-modal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+      document.getElementById('login-error').classList.add('hidden');
+      setTimeout(() => document.getElementById('login-email').focus(), 50);
+    }
+
+    function closeLoginModal() {
+      const m = document.getElementById('login-modal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+      document.getElementById('login-password').value = '';
+    }
+
+    function showLoginError(msg) {
+      const el = document.getElementById('login-error');
+      el.innerText = msg;
+      el.classList.remove('hidden');
+    }
+
+    function showToast(msg, type = 'ok') {
+      const t = document.getElementById('toast');
+      t.innerHTML = (type === 'ok'
+        ? '<i class="fa-solid fa-circle-check me-2"></i>'
+        : '<i class="fa-solid fa-triangle-exclamation me-2"></i>') + msg;
+      t.className = "fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-5 py-3 rounded-2xl border text-xs font-bold shadow-2xl no-print " +
+        (type === 'ok'
+          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+          : "bg-rose-500/15 border-rose-500/40 text-rose-300");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.add('hidden'), 2600);
+    }
+
+    function doLogin() {
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-password').value;
+      const btn = document.getElementById('login-submit');
+
+      if (!email || !pass) return showLoginError('Email dan password wajib diisi.');
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(cred => {
+          if (cred.user.uid !== ADMIN_UID) {
+            auth.signOut();
+            showLoginError('Akun ini tidak memiliki hak akses admin kas.');
+            return;
+          }
+          closeLoginModal();
+          showToast('Berhasil masuk sebagai Admin Kas');
+        })
+        .catch(err => {
+          const map = {
+            'auth/invalid-email': 'Format email tidak valid.',
+            'auth/user-not-found': 'Akun tidak terdaftar.',
+            'auth/wrong-password': 'Password salah.',
+            'auth/invalid-credential': 'Email atau password salah.',
+            'auth/too-many-requests': 'Terlalu banyak percobaan. Coba lagi beberapa saat.',
+            'auth/network-request-failed': 'Koneksi internet bermasalah.',
+            'auth/invalid-api-key': 'API Key Firebase belum diisi di firebaseConfig.'
+          };
+          showLoginError(map[err.code] || ('Gagal login: ' + err.message));
+        })
+        .finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
+        });
+    }
+
+    function doLogout() {
+      auth.signOut().then(() => showToast('Anda telah keluar dari mode admin'));
+    }
+
+    // Pantau status login (otomatis tetap masuk saat halaman di-refresh)
+    auth.onAuthStateChanged(user => {
+      isAdmin = !!user && user.uid === ADMIN_UID;
+
+      document.getElementById('btn-login').classList.toggle('hidden', isAdmin);
+      const chip = document.getElementById('admin-chip');
+      chip.classList.toggle('hidden', !isAdmin);
+      chip.classList.toggle('flex', isAdmin);
+      if (isAdmin) document.getElementById('admin-email').innerText = user.email || 'Admin';
+
+      const hint = document.getElementById('admin-hint');
+      if (hint) {
+        hint.classList.toggle('hidden', !isAdmin);
+        hint.classList.toggle('flex', isAdmin);
+      }
+
+      if (window.wargaData) filterWarga(); // render ulang tabel sesuai mode
+    });
+
+    /* ============ AKSI ADMIN: TANDAI PEMBAYARAN ============ */
+    function toggleBayar(idx, bulan, statusSekarang) {
+      if (!isAdmin) return;
+
+      const nama = (window.wargaData[idx] || {}).nama || '';
+      const statusBaru = !statusSekarang;
+
+      db.ref(`warga/${idx}/pembayaran/${bulan}`).set(statusBaru)
+        .then(() => {
+          showToast(`${nama} — ${bulan} ditandai ${statusBaru ? 'LUNAS' : 'BELUM BAYAR'}`);
+          db.ref('log_admin').push({
+            nama: nama,
+            bulan: bulan,
+            status: statusBaru,
+            oleh: auth.currentUser ? auth.currentUser.email : '-',
+            waktu: new Date().toISOString()
+          }).catch(() => {});
+        })
+        .catch(err => showToast('Gagal menyimpan: ' + err.message, 'err'));
+    }
 
     function formatRupiah(val) {
       if (val === null || val === undefined) return '-';
@@ -397,7 +589,8 @@
       }
 
       if (data.warga) {
-        window.wargaData = data.warga;
+        // simpan index asli agar penyimpanan ke Firebase menunjuk node yang benar
+        window.wargaData = data.warga.map((w, i) => Object.assign({}, w, { _idx: i }));
         document.getElementById('badge-total-warga').innerText = `${data.warga.length} Warga`;
         filterWarga();
       }
@@ -553,13 +746,24 @@
           const status = w.pembayaran && w.pembayaran[m];
           if (status) totalBulanLunas++;
 
-          statusCols += `
-            <td class="px-2 py-3.5 text-center">
-              ${status 
-                ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold"><i class="fa-solid fa-check text-[10px]"></i></span>' 
-                : '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 text-slate-600"><i class="fa-solid fa-minus text-[10px]"></i></span>'}
-            </td>
-          `;
+          const badge = status
+            ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold"><i class="fa-solid fa-check text-[10px]"></i></span>'
+            : '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 text-slate-600"><i class="fa-solid fa-minus text-[10px]"></i></span>';
+
+          if (isAdmin) {
+            statusCols += `
+              <td class="px-2 py-3.5 text-center">
+                <button type="button"
+                  onclick="toggleBayar(${w._idx}, '${m}', ${status ? 'true' : 'false'})"
+                  title="Klik untuk ubah status ${m} — ${w.nama}"
+                  class="rounded-full hover:ring-2 hover:ring-brand-500/60 hover:scale-110 transition cursor-pointer">
+                  ${badge}
+                </button>
+              </td>
+            `;
+          } else {
+            statusCols += `<td class="px-2 py-3.5 text-center">${badge}</td>`;
+          }
         });
 
         tr.innerHTML = `
