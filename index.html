@@ -442,8 +442,27 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    // UID admin yang diizinkan mengubah data
-    const ADMIN_UID = "7LkQlOBTtLaKKRCJBZSvtvIvBC23";
+    // ====== DAFTAR ADMIN YANG DIIZINKAN MENGUBAH DATA ======
+    // Isi UID di sini (ambil dari Firebase Console > Authentication > Users).
+    // Boleh lebih dari satu admin, pisahkan dengan koma.
+    const ADMIN_UIDS = [
+      "7LkQlOBTtLaKKRCJBZSvtvIvBC23"
+    ];
+
+    // Cadangan: email yang boleh jadi admin (dipakai kalau UID belum sempat dicatat).
+    // Catatan: keamanan sebenarnya tetap ada di Firebase Rules, ini hanya kontrol tampilan.
+    const ADMIN_EMAILS = [
+      "nikitaninit@gmail.com"
+    ];
+
+    function cekAdmin(user) {
+      if (!user) return false;
+      const uidCocok = ADMIN_UIDS.includes(user.uid);
+      const emailCocok = !!user.email &&
+        ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
+      return uidCocok || emailCocok;
+    }
+
     let isAdmin = false;
 
     /* ============ UI LOGIN ============ */
@@ -493,9 +512,12 @@
 
       auth.signInWithEmailAndPassword(email, pass)
         .then(cred => {
-          if (cred.user.uid !== ADMIN_UID) {
+          if (!cekAdmin(cred.user)) {
+            const uid = cred.user.uid;
+            console.warn('UID akun ini:', uid, '| email:', cred.user.email);
             auth.signOut();
-            showLoginError('Akun ini tidak memiliki hak akses admin kas.');
+            showLoginError('Akun ini belum terdaftar sebagai admin kas. UID: ' + uid +
+              ' — salin UID ini ke ADMIN_UIDS dan ke Firebase Rules.');
             return;
           }
           closeLoginModal();
@@ -525,7 +547,7 @@
 
     // Pantau status login (otomatis tetap masuk saat halaman di-refresh)
     auth.onAuthStateChanged(user => {
-      isAdmin = !!user && user.uid === ADMIN_UID;
+      isAdmin = cekAdmin(user);
 
       document.getElementById('btn-login').classList.toggle('hidden', isAdmin);
       const chip = document.getElementById('admin-chip');
