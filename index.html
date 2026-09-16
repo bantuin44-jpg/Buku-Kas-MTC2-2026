@@ -430,11 +430,13 @@
 
   <script>
     const firebaseConfig = {
-      // ⬇️ WAJIB DIISI: ambil dari Firebase Console → Project Settings → Your apps (Web app)
       apiKey: "AIzaSyCswHLmNBsEsNVTsNxr0KqOZPUu4QAm3qs",
       authDomain: "kas-mtc-g6.firebaseapp.com",
+      databaseURL: "https://kas-mtc-g6-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "kas-mtc-g6",
-      databaseURL: "https://kas-mtc-g6-default-rtdb.asia-southeast1.firebasedatabase.app/"
+      storageBucket: "kas-mtc-g6.firebasestorage.app",
+      messagingSenderId: "514936271100",
+      appId: "1:514936271100:web:d0b5a4b2a36287b8ee2779"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
