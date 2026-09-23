@@ -256,7 +256,7 @@
         <div>
           <label class="text-xs font-semibold text-slate-400">Pilih Warga (32 Nama)</label>
           <select id="kas-warga-select" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
-            <option value="">-- Non Warga / Umumu --</option>
+            <option value="">-- Non Warga / Umum --</option>
           </select>
         </div>
         <div>
@@ -426,12 +426,100 @@
       window.wargaData = warga.map((w, i) => Object.assign({}, w, { _idx: i }));
       populateWargaDropdown();
       renderWargaTabel(window.wargaData);
+      hitungPersentasePartisipasi(window.wargaData);
     });
 
     db.ref('buku_kas').on('value', snap => {
       window.bukuKasData = snap.val() || [];
       renderBukuKas(window.bukuKasData);
+      renderChart(window.bukuKasData);
     });
+
+    // FUNGSI RENDER GRAFIK HIGHCHARTS 3D
+    function renderChart(bukuKas) {
+      const bulanList = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      const debetPerBulan = new Array(12).fill(0);
+      const kreditPerBulan = new Array(12).fill(0);
+
+      const items = Array.isArray(bukuKas) ? bukuKas : Object.values(bukuKas || {});
+
+      items.forEach(item => {
+        if (!item || !item.bulan) return;
+        const indexBulan = bulanList.findIndex(b => b.toLowerCase() === item.bulan.toLowerCase());
+        if (indexBulan !== -1) {
+          debetPerBulan[indexBulan] += Number(item.debet || 0);
+          kreditPerBulan[indexBulan] += Number(item.kredit || 0);
+        }
+      });
+
+      Highcharts.chart('kasChart', {
+        chart: {
+          type: 'column',
+          backgroundColor: 'transparent',
+          options3d: {
+            enabled: true,
+            alpha: 10,
+            beta: 15,
+            depth: 50,
+            viewDistance: 25
+          }
+        },
+        title: { text: null },
+        xAxis: {
+          categories: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'],
+          labels: { style: { color: '#94a3b8', fontWeight: 'bold' } },
+          gridLineWidth: 0
+        },
+        yAxis: {
+          min: 0,
+          title: { text: 'Nominal (Rp)', style: { color: '#94a3b8' } },
+          labels: {
+            style: { color: '#94a3b8' },
+            formatter: function() { return 'Rp ' + (this.value / 1000) + 'k'; }
+          },
+          gridLineColor: '#334155'
+        },
+        tooltip: {
+          headerFormat: '<b>{point.key}</b><br/>',
+          pointFormat: '{series.name}: <b>Rp {point.y:,.0f}</b>'
+        },
+        plotOptions: {
+          column: {
+            depth: 25,
+            borderWidth: 0,
+            borderRadius: 6
+          }
+        },
+        legend: {
+          itemStyle: { color: '#cbd5e1', fontWeight: 'bold' },
+          itemHoverStyle: { color: '#ffffff' }
+        },
+        series: [{
+          name: 'Pemasukan (Debet)',
+          data: debetPerBulan,
+          color: '#10b981'
+        }, {
+          name: 'Pengeluaran (Kredit)',
+          data: kreditPerBulan,
+          color: '#f43f5e'
+        }],
+        credits: { enabled: false }
+      });
+    }
+
+    function hitungPersentasePartisipasi(wargaList) {
+      if (!wargaList || wargaList.length === 0) return;
+      const bulanList = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+      const bulanSekarang = bulanList[new Date().getMonth()];
+      
+      let totalLunas = 0;
+      wargaList.forEach(w => {
+        if (w.pembayaran && w.pembayaran[bulanSekarang]) totalLunas++;
+      });
+
+      const persen = Math.round((totalLunas / wargaList.length) * 100);
+      document.getElementById('persen-lunas').innerText = persen + '%';
+    }
 
     function renderWargaTabel(wargaList) {
       const tbody = document.getElementById('tabel-warga-body');
@@ -504,9 +592,12 @@
       tbody.innerHTML = '';
       let totalDebet = 0, totalKredit = 0;
 
-      bukuKas.forEach((item, idx) => {
-        totalDebet += item.debet || 0;
-        totalKredit += item.kredit || 0;
+      const items = Array.isArray(bukuKas) ? bukuKas : Object.values(bukuKas || {});
+
+      items.forEach((item, idx) => {
+        if (!item) return;
+        totalDebet += Number(item.debet || 0);
+        totalKredit += Number(item.kredit || 0);
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -584,7 +675,8 @@
 
     function editKas(idx) {
       editingKasIndex = idx;
-      const data = window.bukuKasData[idx];
+      const items = Array.isArray(window.bukuKasData) ? window.bukuKasData : Object.values(window.bukuKasData || {});
+      const data = items[idx];
       document.getElementById('kas-modal-title').innerText = "Edit Transaksi Buku Kas";
       document.getElementById('kas-bulan').value = data.bulan || 'Januari';
       document.getElementById('kas-tipe').value = data.debet > 0 ? 'debet' : 'kredit';
@@ -598,9 +690,11 @@
       const alasan = prompt("Masukkan alasan penghapusan transaksi kas ini (Audit Log):");
       if (!alasan) return showToast('Penghapusan dibatalkan. Alasan wajib diisi!', 'err');
 
+      const items = Array.isArray(window.bukuKasData) ? window.bukuKasData : Object.values(window.bukuKasData || {});
+
       db.ref(`log_admin`).push({
         aksi: 'HAPUS_KAS',
-        dataAwal: window.bukuKasData[idx],
+        dataAwal: items[idx],
         alasan: alasan,
         oleh: auth.currentUser ? auth.currentUser.email : 'Admin',
         waktu: new Date().toISOString()
@@ -617,7 +711,8 @@
 
     function exportCSV() {
       let csvContent = "data:text/csv;charset=utf-8,Bulan,Keterangan,Debet,Kredit\n";
-      (window.bukuKasData || []).forEach(k => {
+      const items = Array.isArray(window.bukuKasData) ? window.bukuKasData : Object.values(window.bukuKasData || {});
+      items.forEach(k => {
         csvContent += `"${k.bulan}","${k.keterangan}",${k.debet||0},${k.kredit||0}\n`;
       });
       const encodedUri = encodeURI(csvContent);
