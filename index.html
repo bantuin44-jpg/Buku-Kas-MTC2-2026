@@ -15,6 +15,13 @@
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://code.highcharts.com/highcharts-3d.js"></script>
     
+    <!-- SheetJS (Excel Export) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- jsPDF & AutoTable (PDF Export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
     <style>
         :root {
             --teal: #239691;
@@ -211,12 +218,17 @@
             gap: 8px;
         }
 
-        /* Search & Filters */
+        /* Filter & Export Row */
         .filter-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
             margin-bottom: 12px;
+        }
+        .export-btn-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
         }
 
         /* Transaction List */
@@ -265,6 +277,23 @@
             border-radius: 6px;
             margin-top: 3px;
         }
+        .tx-badge-nota {
+            display: inline-block;
+            background-color: var(--orange-light);
+            color: var(--orange);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 6px;
+            margin-top: 3px;
+            margin-left: 4px;
+        }
+        .tx-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
         .tx-amount {
             font-size: 13px;
             font-weight: 700;
@@ -272,6 +301,28 @@
         }
         .tx-amount.in { color: var(--green); }
         .tx-amount.out { color: var(--red); }
+        
+        .admin-tx-actions {
+            display: none;
+            gap: 6px;
+            margin-top: 2px;
+        }
+        body.is-admin .admin-tx-actions {
+            display: flex;
+        }
+        .btn-action-icon {
+            background: none;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .btn-action-icon.edit { color: var(--teal); }
+        .btn-action-icon.edit:hover { background-color: var(--teal-light); }
+        .btn-action-icon.del { color: var(--red); }
+        .btn-action-icon.del:hover { background-color: var(--red-light); }
 
         /* Forms */
         .form-group { margin-bottom: 14px; }
@@ -318,7 +369,38 @@
         .btn-orange { background: var(--orange); color: white; }
         .btn-orange:hover { opacity: 0.9; }
         .btn-outline-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+        .btn-outline-teal { background: transparent; border: 1px solid var(--teal); color: var(--teal); }
         .btn-sm { padding: 8px 12px; font-size: 12px; border-radius: 8px; }
+
+        /* Image Preview Box */
+        .image-preview-container {
+            margin-top: 8px;
+            position: relative;
+            display: none;
+        }
+        .image-preview-container img {
+            width: 100%;
+            max-height: 180px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .btn-remove-preview {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(239, 68, 68, 0.85);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+        }
 
         /* Bottom Nav */
         .bottom-nav {
@@ -373,7 +455,9 @@
         .receipt-card {
             background: #fff;
             width: 100%;
-            max-width: 360px;
+            max-width: 380px;
+            max-height: 90vh;
+            overflow-y: auto;
             border-radius: 20px;
             padding: 24px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
@@ -382,10 +466,10 @@
         .receipt-header {
             text-align: center;
             border-bottom: 2px dashed var(--border-color);
-            padding-bottom: 16px;
-            margin-bottom: 16px;
+            padding-bottom: 14px;
+            margin-bottom: 14px;
         }
-        .receipt-body { font-size: 12px; margin-bottom: 20px; }
+        .receipt-body { font-size: 12px; margin-bottom: 16px; }
         .receipt-row {
             display: flex;
             justify-content: space-between;
@@ -402,6 +486,17 @@
             padding: 10px;
             background-color: var(--teal-light);
             border-radius: 10px;
+        }
+        .receipt-nota-box {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .receipt-nota-box img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
         }
 
         #chart-container { width: 100%; height: 280px; }
@@ -484,6 +579,16 @@
                 </select>
             </div>
 
+            <!-- EXPORT LAPORAN BUTTONS -->
+            <div class="export-btn-group">
+                <button id="btn-export-pdf" class="btn btn-outline-teal btn-sm">
+                    <i class="fas fa-file-pdf text-red"></i> Export PDF
+                </button>
+                <button id="btn-export-excel" class="btn btn-outline-teal btn-sm">
+                    <i class="fas fa-file-excel text-green"></i> Export Excel
+                </button>
+            </div>
+
             <ul class="tx-list" id="all-tx-list">
                 <p style="text-align:center; font-size: 12px; color: #888; padding: 10px;">Memuat data...</p>
             </ul>
@@ -496,6 +601,15 @@
             <div class="section-title"><i class="fas fa-chart-pie text-orange"></i> Grafik Transparansi Kas</div>
             <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Visualisasi perbandingan total pemasukan dan pengeluaran warga.</p>
             <div id="chart-container"></div>
+            
+            <div class="export-btn-group" style="margin-top: 15px;">
+                <button onclick="exportPDF()" class="btn btn-teal btn-sm">
+                    <i class="fas fa-download"></i> Unduh Laporan PDF
+                </button>
+                <button onclick="exportExcel()" class="btn btn-orange btn-sm">
+                    <i class="fas fa-file-download"></i> Unduh Excel
+                </button>
+            </div>
         </div>
     </div>
 
@@ -517,9 +631,11 @@
             <p id="login-error" style="color:var(--red); font-size:12px; margin-top:10px; display:none; text-align:center;"></p>
         </div>
 
-        <!-- Form Admin Dashboard & Input -->
+        <!-- Form Admin Dashboard & Input/Edit -->
         <div id="admin-dashboard-area" class="card" style="display:none;">
-            <div class="section-title" style="margin-bottom: 14px;"><i class="fas fa-plus-circle text-orange"></i> Tambah Transaksi Kas</div>
+            <div class="section-title" id="form-admin-title" style="margin-bottom: 14px;">
+                <i class="fas fa-plus-circle text-orange"></i> Tambah Transaksi Kas
+            </div>
             
             <div class="form-group">
                 <label>Tanggal</label>
@@ -534,7 +650,7 @@
                 </select>
             </div>
 
-            <!-- DROPDOWN NAMA WARGA (OTOMATIS DARI FIREBASE) -->
+            <!-- DROPDOWN NAMA WARGA -->
             <div class="form-group" id="group-pembayar">
                 <label>Nama Warga (Pembayar)</label>
                 <select id="input-pembayar" class="form-control">
@@ -559,11 +675,45 @@
                     <option value="Tunai">Tunai</option>
                 </select>
             </div>
+
+            <!-- LAMPIRAN FOTO NOTA / BUKTI -->
+            <div class="form-group">
+                <label><i class="fas fa-camera text-teal"></i> Foto Nota / Bukti Pengeluaran (Opsional)</label>
+                <input type="file" id="input-nota-file" class="form-control" accept="image/*">
+                <div class="image-preview-container" id="preview-container">
+                    <img id="preview-img" src="" alt="Nota Preview">
+                    <button type="button" class="btn-remove-preview" id="btn-remove-nota"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
             
             <button id="btn-simpan-tx" class="btn btn-orange" style="margin-top: 10px;">
                 <i class="fas fa-save"></i> Simpan Transaksi
             </button>
-            <button id="btn-logout" class="btn btn-outline-danger" style="margin-top: 12px;">
+            <button id="btn-batal-edit" class="btn btn-outline-danger" style="margin-top: 8px; display: none;">
+                <i class="fas fa-times"></i> Batal Edit
+            </button>
+
+            <hr style="margin: 20px 0; border: none; border-top: 1px dashed var(--border-color);">
+
+            <!-- BROADCAST WHATSAPP TAGIHAN -->
+            <div class="section-title" style="margin-bottom: 10px;">
+                <i class="fab fa-whatsapp text-green"></i> Broadcast Tagihan Iuran WA
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Kirim pengingat iuran bulanan langsung ke Grup WA Warga Gang 6.</p>
+            
+            <div class="form-group">
+                <label>Bulan Tagihan</label>
+                <input type="text" id="wa-bulan" class="form-control" placeholder="Cth: Oktober 2026">
+            </div>
+            <div class="form-group">
+                <label>Nominal Iuran (Rp)</label>
+                <input type="number" id="wa-nominal" class="form-control" value="50000">
+            </div>
+            <button id="btn-broadcast-wa" class="btn btn-teal">
+                <i class="fab fa-whatsapp"></i> Generate & Kirim Broadcast WA
+            </button>
+
+            <button id="btn-logout" class="btn btn-outline-danger" style="margin-top: 20px;">
                 <i class="fas fa-sign-out-alt"></i> Logout Admin
             </button>
         </div>
@@ -589,7 +739,7 @@
         </div>
     </div>
 
-    <!-- Modal Bukti Kuitansi -->
+    <!-- Modal Bukti Kuitansi & Nota Detail -->
     <div id="receipt-modal" class="modal">
         <div class="receipt-card">
             <div class="receipt-header">
@@ -614,10 +764,25 @@
                     <span id="r-metode">-</span>
                 </div>
                 <div class="receipt-total" id="r-nominal">Rp 0</div>
+
+                <!-- NOTA CONTAINER -->
+                <div class="receipt-nota-box" id="r-nota-container" style="display:none;">
+                    <p style="font-size:11px; color:var(--text-muted); margin-bottom:6px; font-weight:600;">Foto Nota Physical / Bukti:</p>
+                    <img id="r-nota-img" src="" alt="Foto Nota" onclick="window.open(this.src, '_blank')">
+                </div>
             </div>
+
             <button id="btn-wa-share" class="btn btn-teal btn-sm" style="margin-bottom: 8px;">
-                <i class="fab fa-whatsapp"></i> Kirim Ke WhatsApp
+                <i class="fab fa-whatsapp"></i> Bagikan Ke WhatsApp
             </button>
+            <div id="admin-receipt-actions" style="display:none; gap:8px; margin-bottom:8px;">
+                <button id="btn-modal-edit" class="btn btn-outline-teal btn-sm" style="flex:1;">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button id="btn-modal-delete" class="btn btn-outline-danger btn-sm" style="flex:1;">
+                    <i class="fas fa-trash"></i> Hapus
+                </button>
+            </div>
             <button onclick="closeReceiptModal()" class="btn btn-outline-danger btn-sm">Tutup</button>
         </div>
     </div>
@@ -627,7 +792,7 @@
 <!-- Firebase SDK JS Module -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+    import { getDatabase, ref, onValue, push, set, remove } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
     // Firebase Config
@@ -642,7 +807,7 @@
       measurementId: "G-YZ0H45LFWH"
     };
 
-    // Default Fallback Warga (Jika node database belum di-import)
+    // Fallback Warga
     const DEFAULT_WARGA = [
         "Bunda Janitra", "Ibu Oom", "Mamah Afwa", "Mamah Albiru", "Mamah Alvaro",
         "Mamah Arcie", "Mamah Arra", "Mamah Ayub", "Mamah Azka 1", "Mamah Azka 2",
@@ -658,11 +823,15 @@
     const auth = getAuth(app);
 
     let allTransactions = [];
+    let filteredTransactions = [];
     let totalMasuk = 0;
     let totalKeluar = 0;
     let selectedTxForReceipt = null;
+    let editingTxId = null;
+    let currentBase64Nota = "";
+    let isAdmin = false;
 
-    // --- BOTTOM NAVIGATION LOGIC ---
+    // --- NAVIGATION ---
     window.switchToTab = (targetId) => {
         document.querySelectorAll('.nav-item').forEach(nav => {
             if(nav.getAttribute('data-target') === targetId) nav.classList.add('active');
@@ -677,18 +846,12 @@
         item.addEventListener('click', () => switchToTab(item.getAttribute('data-target')));
     });
 
-    // --- LOAD DAFTAR WARGA DARI FIREBASE REALTIME DATABASE ---
+    // --- LOAD DAFTAR WARGA ---
     const wargaRef = ref(db, 'warga');
     onValue(wargaRef, (snapshot) => {
         const dataWarga = snapshot.val();
         const selectPembayar = document.getElementById('input-pembayar');
-        let listNama = [];
-
-        if (dataWarga) {
-            listNama = Object.values(dataWarga);
-        } else {
-            listNama = DEFAULT_WARGA; // Fallback jika DB belum terisi JSON
-        }
+        let listNama = dataWarga ? Object.values(dataWarga) : DEFAULT_WARGA;
 
         listNama.sort();
         let optionsHTML = '<option value="">-- Pilih Nama Warga --</option>';
@@ -699,7 +862,7 @@
         selectPembayar.innerHTML = optionsHTML;
     });
 
-    // --- FORM LOGIC: KONDISIONAL PEMBAYAR ---
+    // --- FORM KONDISIONAL ---
     const inputJenis = document.getElementById('input-jenis');
     const groupPembayar = document.getElementById('group-pembayar');
     
@@ -712,8 +875,46 @@
         }
     });
 
+    // --- FOTO NOTA COMPRESSION (CANVAS) ---
+    document.getElementById('input-nota-file').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const maxDim = 600; // Kompres maksimal 600px agar RTDB tetap ringan
+
+                if (width > maxDim) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                currentBase64Nota = canvas.toDataURL('image/jpeg', 0.6);
+                document.getElementById('preview-img').src = currentBase64Nota;
+                document.getElementById('preview-container').style.display = 'block';
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById('btn-remove-nota').addEventListener('click', () => {
+        currentBase64Nota = "";
+        document.getElementById('input-nota-file').value = "";
+        document.getElementById('preview-container').style.display = "none";
+    });
+
     // --- FORMATTER ---
-    const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+    const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
     const formatDate = (dateStr) => {
         if(!dateStr) return '-';
         return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -748,13 +949,13 @@
         renderChart();
     });
 
-    // --- RENDER TRANSAKSI & FILTER ---
+    // --- RENDER TRANSAKSI LIST ---
     function renderTxList() {
         const searchVal = document.getElementById('filter-search').value.toLowerCase();
         const jenisVal = document.getElementById('filter-jenis').value;
         const bulanVal = document.getElementById('filter-bulan').value;
 
-        const filtered = allTransactions.filter(tx => {
+        filteredTransactions = allTransactions.filter(tx => {
             const matchSearch = (tx.keterangan || '').toLowerCase().includes(searchVal) || (tx.pembayar || '').toLowerCase().includes(searchVal);
             const matchJenis = jenisVal === 'all' || tx.jenis === jenisVal;
             const txBulan = tx.tanggal ? tx.tanggal.split('-')[1] : '';
@@ -765,17 +966,18 @@
         let htmlDash = '';
         let htmlAll = '';
 
-        if(filtered.length === 0) {
+        if(filteredTransactions.length === 0) {
             htmlAll = '<p style="text-align:center; font-size:12px; color:#888; padding: 15px;">Tidak ada transaksi ditemukan.</p>';
             htmlDash = htmlAll;
         } else {
-            filtered.forEach((tx, idx) => {
+            filteredTransactions.forEach((tx, idx) => {
                 const isMasuk = tx.jenis === 'masuk';
                 const nominalFmt = formatRp(tx.nominal);
                 const sign = isMasuk ? '+' : '-';
                 const cls = isMasuk ? 'in' : 'out';
                 const icon = isMasuk ? 'fa-arrow-down' : 'fa-arrow-up';
                 const badgeWarga = tx.pembayar ? `<span class="tx-badge-warga"><i class="fas fa-user"></i> ${tx.pembayar}</span>` : '';
+                const badgeNota = tx.notaUrl ? `<span class="tx-badge-nota"><i class="fas fa-paperclip"></i> Nota</span>` : '';
 
                 const itemHTML = `
                     <li class="tx-item" onclick="openReceiptModal('${tx.id}')">
@@ -784,10 +986,16 @@
                             <div class="tx-details">
                                 <h4>${tx.keterangan}</h4>
                                 <p>${formatDate(tx.tanggal)} • ${tx.metode}</p>
-                                ${badgeWarga}
+                                <div>${badgeWarga}${badgeNota}</div>
                             </div>
                         </div>
-                        <div class="tx-amount ${cls}">${sign}${nominalFmt}</div>
+                        <div class="tx-right">
+                            <div class="tx-amount ${cls}">${sign}${nominalFmt}</div>
+                            <div class="admin-tx-actions">
+                                <button class="btn-action-icon edit" onclick="event.stopPropagation(); triggerEditTx('${tx.id}')" title="Edit"><i class="fas fa-pen"></i></button>
+                                <button class="btn-action-icon del" onclick="event.stopPropagation(); triggerDeleteTx('${tx.id}')" title="Hapus"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
                     </li>
                 `;
 
@@ -836,7 +1044,61 @@
         });
     }
 
-    // --- MODAL KUITANSI & WA SHARE ---
+    // --- EXPORT PDF & EXCEL ---
+    window.exportPDF = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(15);
+        doc.setTextColor(35, 150, 145);
+        doc.text("LAPORAN KAS MUTIARA CEMPAKA TAHAP 2 - GANG 6", 14, 18);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 14, 25);
+        doc.text(`Total Saldo Saat Ini: ${document.getElementById('dash-saldo').innerText}`, 14, 31);
+        
+        const tableData = filteredTransactions.map(tx => [
+            formatDate(tx.tanggal),
+            tx.keterangan || '-',
+            tx.pembayar || '-',
+            tx.jenis === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
+            formatRp(tx.nominal),
+            tx.metode || '-'
+        ]);
+
+        doc.autoTable({
+            startY: 36,
+            head: [['Tanggal', 'Keterangan', 'Warga', 'Jenis', 'Nominal', 'Metode']],
+            body: tableData,
+            headStyles: { fillColor: [35, 150, 145] },
+            theme: 'grid',
+            styles: { fontSize: 8 }
+        });
+
+        doc.save(`Laporan_Kas_MTC_Gang6_${new Date().toISOString().slice(0,10)}.pdf`);
+    };
+
+    window.exportExcel = () => {
+        const excelData = filteredTransactions.map(tx => ({
+            Tanggal: formatDate(tx.tanggal),
+            Keterangan: tx.keterangan || '-',
+            'Warga / Pembayar': tx.pembayar || '-',
+            Jenis: tx.jenis === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
+            Nominal: tx.nominal,
+            Metode: tx.metode || '-'
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Kas");
+        XLSX.writeFile(workbook, `Laporan_Kas_MTC_Gang6_${new Date().toISOString().slice(0,10)}.xlsx`);
+    };
+
+    document.getElementById('btn-export-pdf').addEventListener('click', window.exportPDF);
+    document.getElementById('btn-export-excel').addEventListener('click', window.exportExcel);
+
+    // --- MODAL KUITANSI ---
     window.openReceiptModal = (txId) => {
         const tx = allTransactions.find(t => t.id === txId);
         if(!tx) return;
@@ -856,6 +1118,18 @@
             rowWarga.style.display = 'none';
         }
 
+        // Display Nota jika ada
+        const notaBox = document.getElementById('r-nota-container');
+        if(tx.notaUrl) {
+            notaBox.style.display = 'block';
+            document.getElementById('r-nota-img').src = tx.notaUrl;
+        } else {
+            notaBox.style.display = 'none';
+        }
+
+        // Tampilkan tombol Admin jika logged in
+        document.getElementById('admin-receipt-actions').style.display = isAdmin ? 'flex' : 'none';
+
         document.getElementById('receipt-modal').classList.add('active');
     };
 
@@ -863,6 +1137,7 @@
         document.getElementById('receipt-modal').classList.remove('active');
     };
 
+    // --- SHARE WA KUITANSI ---
     document.getElementById('btn-wa-share').addEventListener('click', () => {
         if(!selectedTxForReceipt) return;
         const tx = selectedTxForReceipt;
@@ -878,19 +1153,104 @@
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     });
 
-    // --- AUTHENTICATION & ADMIN INPUT ---
+    // --- BROADCAST WA TAGIHAN ---
+    document.getElementById('btn-broadcast-wa').addEventListener('click', () => {
+        const bulan = document.getElementById('wa-bulan').value || 'Bulan Ini';
+        const nominal = document.getElementById('wa-nominal').value || '50000';
+        const text = `*PENGINGAT IURAN KAS WARGA*\n` +
+                     `*Mutiara Cempaka Tahap 2 – Gang 6*\n` +
+                     `-----------------------------------\n` +
+                     `Bapak/Ibu Warga Gang 6, mengingatkan untuk pembayaran iuran kas *${bulan}* sebesar *${formatRp(nominal)}*.\n\n` +
+                     `Pembayaran dapat disalurkan melalui Transfer / Tunai via Pengurus Kas.\n\n` +
+                     `Cek transparansi saldo & laporan kas terbaru di sini:\n` +
+                     `https://kas-mtc-g6.web.app/\n\n` +
+                     `Terima kasih atas partisipasi & kerjasamanya! 🙏`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    });
+
+    // --- EDIT & DELETE TRANSAKSI (ADMIN) ---
+    window.triggerEditTx = (txId) => {
+        const tx = allTransactions.find(t => t.id === txId);
+        if(!tx) return;
+
+        editingTxId = txId;
+        switchToTab('view-admin');
+
+        document.getElementById('form-admin-title').innerHTML = `<i class="fas fa-pen text-orange"></i> Edit Transaksi Kas`;
+        document.getElementById('input-tanggal').value = tx.tanggal || '';
+        document.getElementById('input-jenis').value = tx.jenis || 'masuk';
+        document.getElementById('input-jenis').dispatchEvent(new Event('change'));
+        document.getElementById('input-pembayar').value = tx.pembayar || '';
+        document.getElementById('input-ket').value = tx.keterangan || '';
+        document.getElementById('input-nominal').value = tx.nominal || '';
+        document.getElementById('input-metode').value = tx.metode || 'Transfer';
+        
+        if(tx.notaUrl) {
+            currentBase64Nota = tx.notaUrl;
+            document.getElementById('preview-img').src = tx.notaUrl;
+            document.getElementById('preview-container').style.display = 'block';
+        } else {
+            currentBase64Nota = "";
+            document.getElementById('preview-container').style.display = 'none';
+        }
+
+        document.getElementById('btn-simpan-tx').innerHTML = `<i class="fas fa-sync"></i> Update Transaksi`;
+        document.getElementById('btn-batal-edit').style.display = 'block';
+        closeReceiptModal();
+    };
+
+    window.triggerDeleteTx = (txId) => {
+        if(confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) {
+            remove(ref(db, `transactions/${txId}`))
+                .then(() => {
+                    alert("Transaksi berhasil dihapus.");
+                    closeReceiptModal();
+                })
+                .catch(err => alert("Gagal menghapus: " + err.message));
+        }
+    };
+
+    document.getElementById('btn-modal-edit').addEventListener('click', () => {
+        if(selectedTxForReceipt) triggerEditTx(selectedTxForReceipt.id);
+    });
+
+    document.getElementById('btn-modal-delete').addEventListener('click', () => {
+        if(selectedTxForReceipt) triggerDeleteTx(selectedTxForReceipt.id);
+    });
+
+    document.getElementById('btn-batal-edit').addEventListener('click', resetAdminForm);
+
+    function resetAdminForm() {
+        editingTxId = null;
+        currentBase64Nota = "";
+        document.getElementById('form-admin-title').innerHTML = `<i class="fas fa-plus-circle text-orange"></i> Tambah Transaksi Kas`;
+        document.getElementById('input-ket').value = '';
+        document.getElementById('input-nominal').value = '';
+        document.getElementById('input-pembayar').value = '';
+        document.getElementById('input-nota-file').value = '';
+        document.getElementById('preview-container').style.display = 'none';
+        document.getElementById('btn-simpan-tx').innerHTML = `<i class="fas fa-save"></i> Simpan Transaksi`;
+        document.getElementById('btn-batal-edit').style.display = 'none';
+    }
+
+    // --- AUTHENTICATION & SIMPAN / UPDATE ---
     const loginArea = document.getElementById('admin-login-area');
     const dashArea = document.getElementById('admin-dashboard-area');
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
+            isAdmin = true;
+            document.body.classList.add('is-admin');
             loginArea.style.display = 'none';
             dashArea.style.display = 'block';
             document.getElementById('input-tanggal').valueAsDate = new Date();
         } else {
+            isAdmin = false;
+            document.body.classList.remove('is-admin');
             loginArea.style.display = 'block';
             dashArea.style.display = 'none';
         }
+        renderTxList();
     });
 
     document.getElementById('btn-login').addEventListener('click', () => {
@@ -926,21 +1286,35 @@
             return;
         }
 
-        const newTxRef = push(ref(db, 'transactions'));
-        set(newTxRef, {
+        const payload = {
             tanggal: tgl,
             jenis: jenis,
             pembayar: jenis === 'masuk' ? pembayar : '',
             keterangan: ket,
             nominal: Number(nominal),
             metode: metode,
+            notaUrl: currentBase64Nota || '',
             timestamp: new Date().toISOString()
-        }).then(() => {
-            alert('Transaksi Kas Berhasil Disimpan!');
-            document.getElementById('input-ket').value = '';
-            document.getElementById('input-nominal').value = '';
-            document.getElementById('input-pembayar').value = '';
-        }).catch(err => alert('Gagal menyimpan: ' + err.message));
+        };
+
+        if(editingTxId) {
+            // Update
+            set(ref(db, `transactions/${editingTxId}`), payload)
+                .then(() => {
+                    alert('Transaksi Berhasil Diperbarui!');
+                    resetAdminForm();
+                })
+                .catch(err => alert('Gagal memperbarui: ' + err.message));
+        } else {
+            // New Create
+            const newTxRef = push(ref(db, 'transactions'));
+            set(newTxRef, payload)
+                .then(() => {
+                    alert('Transaksi Kas Berhasil Disimpan!');
+                    resetAdminForm();
+                })
+                .catch(err => alert('Gagal menyimpan: ' + err.message));
+        }
     });
 
 </script>
