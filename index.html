@@ -117,11 +117,7 @@
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 pb-20 relative z-20 space-y-8">
 
     <!-- Metrics Cards Grid -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800">
-        <span class="text-[11px] font-extrabold uppercase text-slate-400">Saldo Awal (2025)</span>
-        <p id="saldo-2025" class="text-2xl font-black text-white mt-2">Rp 0</p>
-      </div>
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-5">
       <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800">
         <span class="text-[11px] font-extrabold uppercase text-slate-400">Pemasukan (2026)</span>
         <p id="total-masuk" class="text-2xl font-black text-emerald-400 mt-2">Rp 0</p>
@@ -292,7 +288,7 @@
 
       <div>
         <label class="text-xs font-semibold text-slate-400">Keterangan Transaksi</label>
-        <input type="text" id="kas-keterangan" placeholder="Contoh: Saldo Kas Akhir Agustus 2026" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
+        <input type="text" id="kas-keterangan" placeholder="Contoh: Pembayaran Kebersihan Lingkungan" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
       </div>
 
       <div>
@@ -350,7 +346,6 @@
     let selectedBulan = null;
     let editingKasKey = null;
 
-    let saldoAwal2025 = 0;
     let totalDebet2026 = 0;
     let totalKredit2026 = 0;
 
@@ -399,7 +394,7 @@
     }
 
     function hitungKalkulasiSaldo() {
-      const saldoKasUtama = saldoAwal2025 + totalDebet2026 - totalKredit2026;
+      const saldoKasUtama = totalDebet2026 - totalKredit2026;
       document.getElementById('saldo-utama').innerText = formatRupiah(saldoKasUtama);
     }
 
@@ -422,13 +417,6 @@
         });
       }
     }
-
-    db.ref('info').on('value', snap => {
-      const info = snap.val() || {};
-      saldoAwal2025 = Number(info.sisa_saldo_2025 || 0);
-      document.getElementById('saldo-2025').innerText = formatRupiah(saldoAwal2025);
-      hitungKalkulasiSaldo();
-    });
 
     db.ref('warga').on('value', snap => {
       const warga = snap.val() || [];
