@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kas Mutiara Cempaka II | Portal Keuangan Transparan & Akuntabel</title>
   
+  <!-- Favicon Dummy untuk mencegah Error 404 -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
+
   <!-- Plus Jakarta Sans Font & Tailwind CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,10 +28,11 @@
     }
   </script>
   
-  <!-- FontAwesome Icons & Highcharts 3D -->
+  <!-- FontAwesome Icons & Highcharts 3D + Accessibility -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/highcharts-3d.js"></script>
+  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -74,7 +78,6 @@
             <span class="hidden sm:inline">Unduh Excel</span>
           </button>
           
-          <!-- TOMBOL LOGIN / LOGOUT ADMIN -->
           <button id="btn-login" onclick="openLoginModal()" class="px-3.5 py-2 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 text-xs font-bold border border-brand-500/30 transition flex items-center gap-2">
             <i class="fa-solid fa-right-to-bracket"></i>
             <span class="hidden sm:inline">Login Admin</span>
@@ -348,7 +351,7 @@
     let isAdmin = false;
     let selectedWargaIdx = null;
     let selectedBulan = null;
-    let editingKasIndex = null;
+    let editingKasKey = null;
 
     function cekAdmin(user) {
       if (!user) return false;
@@ -401,7 +404,6 @@
       document.getElementById('btn-' + tabId).classList.add('tab-active');
     }
 
-    // Populate Dropdown 32 Warga dari Realtime Database
     function populateWargaDropdown() {
       const select = document.getElementById('kas-warga-select');
       select.innerHTML = '<option value="">-- Non Warga / Umum --</option>';
@@ -430,18 +432,17 @@
     });
 
     db.ref('buku_kas').on('value', snap => {
-      window.bukuKasData = snap.val() || [];
-      renderBukuKas(window.bukuKasData);
-      renderChart(window.bukuKasData);
+      window.bukuKasRaw = snap.val() || {};
+      renderBukuKas(window.bukuKasRaw);
+      renderChart(window.bukuKasRaw);
     });
 
-    // FUNGSI RENDER GRAFIK HIGHCHARTS 3D
-    function renderChart(bukuKas) {
+    function renderChart(bukuKasObj) {
       const bulanList = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
       const debetPerBulan = new Array(12).fill(0);
       const kreditPerBulan = new Array(12).fill(0);
 
-      const items = Array.isArray(bukuKas) ? bukuKas : Object.values(bukuKas || {});
+      const items = Array.isArray(bukuKasObj) ? bukuKasObj : Object.values(bukuKasObj || {});
 
       items.forEach(item => {
         if (!item || !item.bulan) return;
@@ -464,6 +465,7 @@
             viewDistance: 25
           }
         },
+        accessibility: { enabled: false },
         title: { text: null },
         xAxis: {
           categories: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'],
@@ -587,14 +589,15 @@
         });
     }
 
-    function renderBukuKas(bukuKas) {
+    function renderBukuKas(bukuKasObj) {
       const tbody = document.getElementById('tabel-kas-body');
       tbody.innerHTML = '';
       let totalDebet = 0, totalKredit = 0;
 
-      const items = Array.isArray(bukuKas) ? bukuKas : Object.values(bukuKas || {});
+      const keys = Object.keys(bukuKasObj || {});
 
-      items.forEach((item, idx) => {
+      keys.forEach((key) => {
+        const item = bukuKasObj[key];
         if (!item) return;
         totalDebet += Number(item.debet || 0);
         totalKredit += Number(item.kredit || 0);
@@ -609,8 +612,8 @@
             ${item.kuitansiUrl ? `<a href="${item.kuitansiUrl}" target="_blank" class="text-blue-400 hover:underline"><i class="fa-solid fa-file-invoice"></i> Lihat</a>` : '-'}
           </td>
           <td class="px-6 py-4 text-center admin-only-col ${isAdmin?'':'hidden'} space-x-2">
-            <button onclick="editKas(${idx})" class="text-amber-400 hover:text-amber-300"><i class="fa-solid fa-pen"></i></button>
-            <button onclick="hapusKas(${idx})" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="editKas('${key}')" class="text-amber-400 hover:text-amber-300"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="hapusKas('${key}')" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -621,7 +624,7 @@
     }
 
     function openTambahKasModal() {
-      editingKasIndex = null;
+      editingKasKey = null;
       document.getElementById('kas-modal-title').innerText = "Tambah Transaksi Buku Kas";
       document.getElementById('kas-alasan-box').classList.add('hidden');
       document.getElementById('modal-kas').classList.remove('hidden');
@@ -636,7 +639,7 @@
       const nominal = Number(document.getElementById('kas-nominal').value) || 0;
       const warga = document.getElementById('kas-warga-select').value;
       let keterangan = document.getElementById('kas-keterangan').value;
-      if (warga) keterangan = `[${warga}] ${keterangan}`;
+      if (warga && !keterangan.includes(`[${warga}]`)) keterangan = `[${warga}] ${keterangan}`;
 
       const fileInput = document.getElementById('kas-kuitansi-file');
       
@@ -652,16 +655,22 @@
       const handleSave = (imgBase64 = null) => {
         if (imgBase64) payload.kuitansiUrl = imgBase64;
         
-        if (editingKasIndex !== null) {
+        if (editingKasKey !== null) {
           const alasan = document.getElementById('kas-alasan-edit').value;
           if (!alasan) return showToast('Alasan edit wajib diisi!', 'err');
           payload.alasanEdit = alasan;
-          db.ref(`buku_kas/${editingKasIndex}`).update(payload);
+          db.ref(`buku_kas/${editingKasKey}`).update(payload)
+            .then(() => {
+              showToast('Transaksi berhasil diperbarui!');
+              closeModalKas();
+            });
         } else {
-          db.ref('buku_kas').push(payload);
+          db.ref('buku_kas').push(payload)
+            .then(() => {
+              showToast('Transaksi baru berhasil ditambahkan!');
+              closeModalKas();
+            });
         }
-        showToast('Buku kas berhasil disimpan!');
-        closeModalKas();
       };
 
       if (fileInput.files[0]) {
@@ -673,10 +682,10 @@
       }
     }
 
-    function editKas(idx) {
-      editingKasIndex = idx;
-      const items = Array.isArray(window.bukuKasData) ? window.bukuKasData : Object.values(window.bukuKasData || {});
-      const data = items[idx];
+    function editKas(key) {
+      editingKasKey = key;
+      const data = window.bukuKasRaw[key];
+      if (!data) return;
       document.getElementById('kas-modal-title').innerText = "Edit Transaksi Buku Kas";
       document.getElementById('kas-bulan').value = data.bulan || 'Januari';
       document.getElementById('kas-tipe').value = data.debet > 0 ? 'debet' : 'kredit';
@@ -686,22 +695,25 @@
       document.getElementById('modal-kas').classList.remove('hidden');
     }
 
-    function hapusKas(idx) {
+    function hapusKas(key) {
+      if (!isAdmin) return showToast('Hak akses admin diperlukan!', 'err');
       const alasan = prompt("Masukkan alasan penghapusan transaksi kas ini (Audit Log):");
       if (!alasan) return showToast('Penghapusan dibatalkan. Alasan wajib diisi!', 'err');
 
-      const items = Array.isArray(window.bukuKasData) ? window.bukuKasData : Object.values(window.bukuKasData || {});
+      const itemTarget = window.bukuKasRaw[key];
 
       db.ref(`log_admin`).push({
         aksi: 'HAPUS_KAS',
-        dataAwal: items[idx],
+        targetKey: key,
+        dataAwal: itemTarget,
         alasan: alasan,
         oleh: auth.currentUser ? auth.currentUser.email : 'Admin',
         waktu: new Date().toISOString()
       });
 
-      db.ref(`buku_kas/${idx}`).remove()
-        .then(() => showToast('Transaksi berhasil dihapus!'));
+      db.ref(`buku_kas/${key}`).remove()
+        .then(() => showToast('Transaksi berhasil dihapus!'))
+        .catch(err => showToast('Gagal menghapus: ' + err.message, 'err'));
     }
 
     function kirimWA(namaWarga) {
@@ -711,9 +723,10 @@
 
     function exportCSV() {
       let csvContent = "data:text/csv;charset=utf-8,Bulan,Keterangan,Debet,Kredit\n";
-      const items = Array.isArray(window.bukuKasData) ? window.bukuKasData : Object.values(window.bukuKasData || {});
+      const items = Object.values(window.bukuKasRaw || {});
       items.forEach(k => {
-        csvContent += `"${k.bulan}","${k.keterangan}",${k.debet||0},${k.kredit||0}\n`;
+        if (!k) return;
+        csvContent += `"${k.bulan||''}","${k.keterangan||''}",${k.debet||0},${k.kredit||0}\n`;
       });
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
