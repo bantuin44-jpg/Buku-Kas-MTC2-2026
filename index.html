@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kas Mutiara Cempaka II | Portal Keuangan Transparan & Akuntabel</title>
   
-  <!-- Favicon Dummy untuk mencegah Error 404 -->
+  <!-- Favicon SVG Inline untuk mencegah Error 404 -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
 
   <!-- Plus Jakarta Sans Font & Tailwind CSS -->
@@ -34,7 +34,7 @@
   <script src="https://code.highcharts.com/highcharts-3d.js"></script>
   <script src="https://code.highcharts.com/modules/accessibility.js"></script>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDKs (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -199,7 +199,7 @@
           <table class="w-full text-left text-xs sm:text-sm">
             <thead>
               <tr class="bg-slate-800/50 border-b border-slate-800 font-bold text-slate-300 uppercase tracking-wider">
-                <th class="px-6 py-4">Bulan</th>
+                <th class="px-6 py-4">Tanggal / Bulan</th>
                 <th class="px-6 py-4">Keterangan</th>
                 <th class="px-6 py-4 text-right">Debet</th>
                 <th class="px-6 py-4 text-right">Kredit</th>
@@ -263,13 +263,8 @@
           </select>
         </div>
         <div>
-          <label class="text-xs font-semibold text-slate-400">Bulan</label>
-          <select id="kas-bulan" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
-            <option value="Januari">Januari</option><option value="Februari">Februari</option><option value="Maret">Maret</option>
-            <option value="April">April</option><option value="Mei">Mei</option><option value="Juni">Juni</option>
-            <option value="Juli">Juli</option><option value="Agustus">Agustus</option><option value="September">September</option>
-            <option value="Oktober">Oktober</option><option value="November">November</option><option value="Desember">Desember</option>
-          </select>
+          <label class="text-xs font-semibold text-slate-400">Tanggal Transaksi</label>
+          <input type="date" id="kas-tanggal" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
         </div>
       </div>
 
@@ -297,7 +292,7 @@
 
       <div>
         <label class="text-xs font-semibold text-slate-400">Keterangan Transaksi</label>
-        <input type="text" id="kas-keterangan" placeholder="Contoh: Iuran Kas / Pembelian Sapu" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
+        <input type="text" id="kas-keterangan" placeholder="Contoh: Saldo Kas Akhir Agustus 2026" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
       </div>
 
       <div>
@@ -331,6 +326,7 @@
 
   <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] px-5 py-3 rounded-2xl border text-xs font-bold shadow-2xl"></div>
 
+  <!-- JAVASCRIPT LOGIC -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCswHLmNBsEsNVTsNxr0KqOZPUu4QAm3qs",
@@ -347,11 +343,16 @@
 
     const ADMIN_UIDS = ["7LkQlOBTtLaKKRCJBZSvtvIvBC23"];
     const ADMIN_EMAILS = ["nikitaninit@gmail.com"];
+    const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
     let isAdmin = false;
     let selectedWargaIdx = null;
     let selectedBulan = null;
     let editingKasKey = null;
+
+    let saldoAwal2025 = 0;
+    let totalDebet2026 = 0;
+    let totalKredit2026 = 0;
 
     function cekAdmin(user) {
       if (!user) return false;
@@ -397,6 +398,11 @@
       return 'Rp ' + Number(val).toLocaleString('id-ID');
     }
 
+    function hitungKalkulasiSaldo() {
+      const saldoKasUtama = saldoAwal2025 + totalDebet2026 - totalKredit2026;
+      document.getElementById('saldo-utama').innerText = formatRupiah(saldoKasUtama);
+    }
+
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
@@ -419,8 +425,9 @@
 
     db.ref('info').on('value', snap => {
       const info = snap.val() || {};
-      document.getElementById('saldo-utama').innerText = formatRupiah(info.saldo_terakhir);
-      document.getElementById('saldo-2025').innerText = formatRupiah(info.sisa_saldo_2025);
+      saldoAwal2025 = Number(info.sisa_saldo_2025 || 0);
+      document.getElementById('saldo-2025').innerText = formatRupiah(saldoAwal2025);
+      hitungKalkulasiSaldo();
     });
 
     db.ref('warga').on('value', snap => {
@@ -433,12 +440,29 @@
 
     db.ref('buku_kas').on('value', snap => {
       window.bukuKasRaw = snap.val() || {};
+      
+      totalDebet2026 = 0;
+      totalKredit2026 = 0;
+
+      const items = Array.isArray(window.bukuKasRaw) 
+        ? window.bukuKasRaw 
+        : Object.values(window.bukuKasRaw);
+
+      items.forEach(item => {
+        if (!item) return;
+        totalDebet2026 += Number(item.debet || 0);
+        totalKredit2026 += Number(item.kredit || 0);
+      });
+
+      document.getElementById('total-masuk').innerText = formatRupiah(totalDebet2026);
+      document.getElementById('total-keluar').innerText = formatRupiah(totalKredit2026);
+
+      hitungKalkulasiSaldo();
       renderBukuKas(window.bukuKasRaw);
       renderChart(window.bukuKasRaw);
     });
 
     function renderChart(bukuKasObj) {
-      const bulanList = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
       const debetPerBulan = new Array(12).fill(0);
       const kreditPerBulan = new Array(12).fill(0);
 
@@ -446,7 +470,7 @@
 
       items.forEach(item => {
         if (!item || !item.bulan) return;
-        const indexBulan = bulanList.findIndex(b => b.toLowerCase() === item.bulan.toLowerCase());
+        const indexBulan = NAMA_BULAN.findIndex(b => b.toLowerCase() === item.bulan.toLowerCase());
         if (indexBulan !== -1) {
           debetPerBulan[indexBulan] += Number(item.debet || 0);
           kreditPerBulan[indexBulan] += Number(item.kredit || 0);
@@ -592,19 +616,22 @@
     function renderBukuKas(bukuKasObj) {
       const tbody = document.getElementById('tabel-kas-body');
       tbody.innerHTML = '';
-      let totalDebet = 0, totalKredit = 0;
 
       const keys = Object.keys(bukuKasObj || {});
 
       keys.forEach((key) => {
         const item = bukuKasObj[key];
         if (!item) return;
-        totalDebet += Number(item.debet || 0);
-        totalKredit += Number(item.kredit || 0);
+
+        let displayTgl = item.bulan || '';
+        if (item.tanggal) {
+          const [y, m, d] = item.tanggal.split('-');
+          displayTgl = `${d}/${m}/${y}`;
+        }
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td class="px-6 py-4 font-bold text-slate-200">${item.bulan||''}</td>
+          <td class="px-6 py-4 font-bold text-slate-200 whitespace-nowrap">${displayTgl}</td>
           <td class="px-6 py-4 text-slate-300">${item.keterangan||''} ${item.metode?`(${item.metode})`:''}</td>
           <td class="px-6 py-4 text-right text-emerald-400 font-bold">${item.debet?formatRupiah(item.debet):'-'}</td>
           <td class="px-6 py-4 text-right text-rose-400 font-bold">${item.kredit?formatRupiah(item.kredit):'-'}</td>
@@ -618,14 +645,16 @@
         `;
         tbody.appendChild(tr);
       });
-
-      document.getElementById('total-masuk').innerText = formatRupiah(totalDebet);
-      document.getElementById('total-keluar').innerText = formatRupiah(totalKredit);
     }
 
     function openTambahKasModal() {
       editingKasKey = null;
       document.getElementById('kas-modal-title').innerText = "Tambah Transaksi Buku Kas";
+      
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('kas-tanggal').value = today;
+      document.getElementById('kas-nominal').value = '';
+      document.getElementById('kas-keterangan').value = '';
       document.getElementById('kas-alasan-box').classList.add('hidden');
       document.getElementById('modal-kas').classList.remove('hidden');
     }
@@ -633,7 +662,13 @@
     function closeModalKas() { document.getElementById('modal-kas').classList.add('hidden'); }
 
     function simpanBukuKas() {
-      const bulan = document.getElementById('kas-bulan').value;
+      const tglInput = document.getElementById('kas-tanggal').value;
+      if (!tglInput) return showToast('Tanggal wajib diisi!', 'err');
+
+      const d = new Date(tglInput);
+      const bulan = NAMA_BULAN[d.getMonth()];
+      const tahun = d.getFullYear();
+
       const tipe = document.getElementById('kas-tipe').value;
       const metode = document.getElementById('kas-metode').value;
       const nominal = Number(document.getElementById('kas-nominal').value) || 0;
@@ -644,9 +679,11 @@
       const fileInput = document.getElementById('kas-kuitansi-file');
       
       const payload = {
-        bulan,
-        keterangan,
-        metode,
+        tanggal: tglInput,
+        bulan: bulan,
+        tahun: tahun,
+        keterangan: keterangan,
+        metode: metode,
         debet: tipe === 'debet' ? nominal : 0,
         kredit: tipe === 'kredit' ? nominal : 0,
         updatedAt: new Date().toISOString()
@@ -686,9 +723,11 @@
       editingKasKey = key;
       const data = window.bukuKasRaw[key];
       if (!data) return;
+
       document.getElementById('kas-modal-title').innerText = "Edit Transaksi Buku Kas";
-      document.getElementById('kas-bulan').value = data.bulan || 'Januari';
+      document.getElementById('kas-tanggal').value = data.tanggal || new Date().toISOString().split('T')[0];
       document.getElementById('kas-tipe').value = data.debet > 0 ? 'debet' : 'kredit';
+      document.getElementById('kas-metode').value = data.metode || 'Cash';
       document.getElementById('kas-nominal').value = data.debet || data.kredit || 0;
       document.getElementById('kas-keterangan').value = data.keterangan || '';
       document.getElementById('kas-alasan-box').classList.remove('hidden');
@@ -722,11 +761,11 @@
     }
 
     function exportCSV() {
-      let csvContent = "data:text/csv;charset=utf-8,Bulan,Keterangan,Debet,Kredit\n";
+      let csvContent = "data:text/csv;charset=utf-8,Tanggal,Bulan,Keterangan,Debet,Kredit\n";
       const items = Object.values(window.bukuKasRaw || {});
       items.forEach(k => {
         if (!k) return;
-        csvContent += `"${k.bulan||''}","${k.keterangan||''}",${k.debet||0},${k.kredit||0}\n`;
+        csvContent += `"${k.tanggal||''}","${k.bulan||''}","${k.keterangan||''}",${k.debet||0},${k.kredit||0}\n`;
       });
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
