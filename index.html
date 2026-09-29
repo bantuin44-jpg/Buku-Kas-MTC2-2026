@@ -45,6 +45,8 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
     .tab-active { @apply bg-brand-500 text-slate-950 font-extrabold shadow-lg shadow-brand-500/25; }
+    .fixed.inset-0:not(.hidden) { display: flex; }
+    #kuitansi-img { transition: width .2s ease; }
     @media print {
       .no-print { display: none !important; }
       body { background: white; color: black; }
@@ -308,6 +310,67 @@
     </div>
   </div>
 
+  <!-- MODAL PREVIEW KUITANSI -->
+  <div id="kuitansi-modal" class="hidden fixed inset-0 z-[120] items-center justify-center p-3 sm:p-6">
+    <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" onclick="closeKuitansi()"></div>
+    <div class="relative w-full max-w-3xl max-h-full flex flex-col bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
+      <div class="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-800">
+        <div class="min-w-0">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-file-invoice text-blue-400"></i> Bukti Transaksi / Kuitansi</h3>
+          <p id="kuitansi-meta" class="text-xs text-slate-400 mt-1 truncate"></p>
+        </div>
+        <button type="button" onclick="closeKuitansi()" class="shrink-0 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300" title="Tutup (Esc)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="flex-1 overflow-auto custom-scrollbar bg-slate-950 p-3 flex items-start justify-center min-h-[200px]">
+        <img id="kuitansi-img" alt="Bukti kuitansi" class="max-w-full max-h-[68vh] object-contain rounded-xl cursor-zoom-in" onclick="toggleZoomKuitansi()">
+        <p id="kuitansi-error" class="hidden text-xs text-rose-400 self-center">Gambar tidak dapat ditampilkan.</p>
+      </div>
+      <div class="flex flex-wrap items-center justify-end gap-2 px-5 py-3 border-t border-slate-800">
+        <button type="button" onclick="toggleZoomKuitansi()" id="kuitansi-zoom-btn" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold"><i class="fa-solid fa-magnifying-glass-plus"></i> Perbesar</button>
+        <button type="button" onclick="bukaKuitansiTab()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold"><i class="fa-solid fa-up-right-from-square"></i> Tab Baru</button>
+        <button type="button" onclick="unduhKuitansi()" class="px-3.5 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 text-xs font-bold"><i class="fa-solid fa-download"></i> Unduh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL TEMPLATE PESAN WHATSAPP -->
+  <div id="wa-modal" class="hidden fixed inset-0 z-[110] items-center justify-center p-3 sm:p-6">
+    <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closeWAModal()"></div>
+    <div class="relative w-full max-w-lg max-h-full overflow-auto custom-scrollbar bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div>
+        <h3 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-brands fa-whatsapp text-emerald-400"></i> Kirim Pesan WhatsApp</h3>
+        <p id="wa-warga-info" class="text-xs text-brand-400 font-bold mt-1"></p>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Jenis Pesan</label>
+          <select id="wa-template" onchange="renderWAPreview()" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
+            <option value="kuitansi">Kuitansi Pembayaran</option>
+            <option value="pengingat">Pengingat Iuran</option>
+            <option value="rekap">Rekap Kas Bulanan</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-400">Periode</label>
+          <select id="wa-bulan" onchange="renderWAPreview()" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white"></select>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-400">Nomor WhatsApp <span class="text-slate-500 font-normal">(opsional, kosongkan untuk pilih kontak/grup)</span></label>
+        <input id="wa-nomor" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white">
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-400">Pratinjau Pesan <span class="text-slate-500 font-normal">(dapat diedit)</span></label>
+        <textarea id="wa-pesan" rows="14" class="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100 leading-relaxed font-mono custom-scrollbar"></textarea>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeWAModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Tutup</button>
+        <button type="button" onclick="salinPesanWA()" class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold"><i class="fa-regular fa-copy"></i> Salin</button>
+        <button type="button" onclick="kirimPesanWA()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold"><i class="fa-brands fa-whatsapp"></i> Kirim WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL LOGIN ADMIN -->
   <div id="login-modal" class="hidden fixed inset-0 z-[100] items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onclick="closeLoginModal()"></div>
@@ -560,7 +623,7 @@
           <td class="px-4 py-3 font-bold text-slate-200">${w.nama}</td>
           ${statusCols}
           <td class="px-4 py-3 text-center">
-            <button onclick="kirimWA('${w.nama}')" class="text-emerald-400 hover:text-emerald-300" title="Kirim Kuitansi WA">
+            <button onclick="openWAModal(${w._idx})" class="text-emerald-400 hover:text-emerald-300" title="Kirim Pesan WhatsApp">
               <i class="fa-brands fa-whatsapp text-lg"></i>
             </button>
           </td>
@@ -624,7 +687,7 @@
           <td class="px-6 py-4 text-right text-emerald-400 font-bold">${item.debet?formatRupiah(item.debet):'-'}</td>
           <td class="px-6 py-4 text-right text-rose-400 font-bold">${item.kredit?formatRupiah(item.kredit):'-'}</td>
           <td class="px-6 py-4 text-center">
-            ${item.kuitansiUrl ? `<a href="${item.kuitansiUrl}" target="_blank" class="text-blue-400 hover:underline"><i class="fa-solid fa-file-invoice"></i> Lihat</a>` : '-'}
+            ${item.kuitansiUrl ? `<button type="button" onclick="previewKuitansi('${key}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30 transition"><i class="fa-solid fa-eye"></i> Preview</button>` : '<span class="text-slate-600">-</span>'}
           </td>
           <td class="px-6 py-4 text-center admin-only-col ${isAdmin?'':'hidden'} space-x-2">
             <button onclick="editKas('${key}')" class="text-amber-400 hover:text-amber-300"><i class="fa-solid fa-pen"></i></button>
@@ -644,6 +707,7 @@
       document.getElementById('kas-nominal').value = '';
       document.getElementById('kas-keterangan').value = '';
       document.getElementById('kas-alasan-box').classList.add('hidden');
+      document.getElementById('kas-kuitansi-file').value = '';
       document.getElementById('modal-kas').classList.remove('hidden');
     }
 
@@ -699,9 +763,9 @@
       };
 
       if (fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => handleSave(e.target.result);
-        reader.readAsDataURL(fileInput.files[0]);
+        compressImage(fileInput.files[0])
+          .then(dataUrl => handleSave(dataUrl))
+          .catch(err => showToast(err.message, 'err'));
       } else {
         handleSave();
       }
@@ -719,6 +783,7 @@
       document.getElementById('kas-nominal').value = data.debet || data.kredit || 0;
       document.getElementById('kas-keterangan').value = data.keterangan || '';
       document.getElementById('kas-alasan-box').classList.remove('hidden');
+      document.getElementById('kas-kuitansi-file').value = '';
       document.getElementById('modal-kas').classList.remove('hidden');
     }
 
@@ -743,9 +808,262 @@
         .catch(err => showToast('Gagal menghapus: ' + err.message, 'err'));
     }
 
-    function kirimWA(namaWarga) {
-      const msg = `*KUITANSI PEMBAYARAN KAS MTC II*%0A%0ATerima kasih, pembayaran Iuran Kas Warga atas nama *${namaWarga}* telah kami terima dan dicatat dalam sistem kas perumahan.%0A%0A_Salam Transparan & Akuntabel_`;
-      window.open(`https://wa.me/?text=${msg}`, '_blank');
+    /* ========== KOMPRESI GAMBAR (agar ringan di Firebase) ========== */
+    function compressImage(file, maxSide = 1400, quality = 0.8) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Gagal membaca file'));
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('File bukan gambar yang valid'));
+          img.onload = () => {
+            const r = Math.min(1, maxSide / Math.max(img.width, img.height));
+            const c = document.createElement('canvas');
+            c.width = Math.round(img.width * r);
+            c.height = Math.round(img.height * r);
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, c.width, c.height);
+            ctx.drawImage(img, 0, 0, c.width, c.height);
+            resolve(c.toDataURL('image/jpeg', quality));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /* ========== PREVIEW KUITANSI ========== */
+    let kuitansiCtx = { url: null, blobUrl: null, name: 'kuitansi' };
+
+    function dataUrlToBlob(dataUrl) {
+      const [head, b64] = dataUrl.split(',');
+      const mime = (head.match(/:(.*?);/) || [])[1] || 'image/jpeg';
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: mime });
+    }
+
+    function getKuitansiBlobUrl() {
+      if (!kuitansiCtx.url) return null;
+      if (!kuitansiCtx.url.startsWith('data:')) return kuitansiCtx.url;
+      if (!kuitansiCtx.blobUrl) kuitansiCtx.blobUrl = URL.createObjectURL(dataUrlToBlob(kuitansiCtx.url));
+      return kuitansiCtx.blobUrl;
+    }
+
+    function previewKuitansi(key) {
+      const item = (window.bukuKasRaw || {})[key];
+      if (!item || !item.kuitansiUrl) return showToast('Bukti transaksi tidak ditemukan', 'err');
+
+      if (kuitansiCtx.blobUrl) URL.revokeObjectURL(kuitansiCtx.blobUrl);
+      kuitansiCtx = { url: item.kuitansiUrl, blobUrl: null, name: `Kuitansi_${item.tanggal || key}` };
+
+      const nominal = item.debet ? `Pemasukan ${formatRupiah(item.debet)}` : `Pengeluaran ${formatRupiah(item.kredit)}`;
+      const tgl = item.tanggal ? item.tanggal.split('-').reverse().join('/') : (item.bulan || '');
+      document.getElementById('kuitansi-meta').textContent = `${tgl} • ${item.keterangan || '-'} • ${nominal}`;
+
+      const img = document.getElementById('kuitansi-img');
+      const err = document.getElementById('kuitansi-error');
+      err.classList.add('hidden');
+      img.classList.remove('hidden');
+      img.onerror = () => { img.classList.add('hidden'); err.classList.remove('hidden'); };
+      resetZoomKuitansi();
+      img.src = item.kuitansiUrl;
+
+      document.getElementById('kuitansi-modal').classList.remove('hidden');
+    }
+
+    function closeKuitansi() {
+      document.getElementById('kuitansi-modal').classList.add('hidden');
+      document.getElementById('kuitansi-img').src = '';
+    }
+
+    function resetZoomKuitansi() {
+      const img = document.getElementById('kuitansi-img');
+      img.style.width = ''; img.style.maxWidth = ''; img.style.maxHeight = '';
+      img.classList.add('cursor-zoom-in'); img.classList.remove('cursor-zoom-out');
+      document.getElementById('kuitansi-zoom-btn').innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i> Perbesar';
+      img.dataset.zoom = '0';
+    }
+
+    function toggleZoomKuitansi() {
+      const img = document.getElementById('kuitansi-img');
+      if (img.dataset.zoom === '1') return resetZoomKuitansi();
+      img.style.maxWidth = 'none'; img.style.maxHeight = 'none'; img.style.width = '200%';
+      img.classList.remove('cursor-zoom-in'); img.classList.add('cursor-zoom-out');
+      document.getElementById('kuitansi-zoom-btn').innerHTML = '<i class="fa-solid fa-magnifying-glass-minus"></i> Perkecil';
+      img.dataset.zoom = '1';
+    }
+
+    function bukaKuitansiTab() {
+      const u = getKuitansiBlobUrl();
+      if (u) window.open(u, '_blank');
+    }
+
+    function unduhKuitansi() {
+      const u = getKuitansiBlobUrl();
+      if (!u) return;
+      const mime = kuitansiCtx.url.startsWith('data:') ? (kuitansiCtx.url.match(/data:(.*?);/) || [])[1] : '';
+      const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+      const a = document.createElement('a');
+      a.href = u; a.download = `${kuitansiCtx.name}.${ext}`;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      closeKuitansi(); closeWAModal();
+    });
+
+    /* ========== TEMPLATE PESAN WHATSAPP ========== */
+    let waCtx = { idx: null };
+
+    function statusIuran(w, bulanIdx) {
+      const val = w.pembayaran ? w.pembayaran[NAMA_BULAN[bulanIdx].toLowerCase()] : false;
+      const nominal = (typeof val === 'number' && val > 0) ? val : null;
+      return { lunas: val === true || nominal !== null, nominal };
+    }
+
+    function rekapBulan(bulanIdx) {
+      const tahun = new Date().getFullYear();
+      let masuk = 0, keluar = 0;
+      Object.values(window.bukuKasRaw || {}).forEach(k => {
+        if (!k || !k.bulan) return;
+        if (k.bulan.toLowerCase() !== NAMA_BULAN[bulanIdx].toLowerCase()) return;
+        if (k.tahun && Number(k.tahun) !== tahun) return;
+        masuk += Number(k.debet || 0);
+        keluar += Number(k.kredit || 0);
+      });
+      const list = window.wargaData || [];
+      const lunas = list.filter(w => statusIuran(w, bulanIdx).lunas).length;
+      return { masuk, keluar, lunas, total: list.length, persen: list.length ? Math.round(lunas / list.length * 100) : 0 };
+    }
+
+    function buildPesanWA(tpl, w, bulanIdx) {
+      const tahun = new Date().getFullYear();
+      const periode = `${NAMA_BULAN[bulanIdx]} ${tahun}`;
+      const hariIni = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      const garis = '──────────────────';
+      const portal = /^https?:/.test(location.href) ? `\nPortal Kas Warga:\n${location.href.split('#')[0]}\n` : '';
+      const ttd = `Hormat kami,\n*Pengurus Kas Warga*\nPerumahan Mutiara Cempaka Tahap II\n_Transparan & Akuntabel_`;
+      const st = statusIuran(w, bulanIdx);
+
+      if (tpl === 'kuitansi') {
+        const noKwt = `KWT/MTC2/${tahun}${String(bulanIdx + 1).padStart(2, '0')}/${String(w.no || w._idx + 1).padStart(3, '0')}`;
+        return `*KUITANSI PEMBAYARAN IURAN KAS WARGA*
+*Perumahan Mutiara Cempaka Tahap II*
+${garis}
+No. Kuitansi : ${noKwt}
+Tanggal : ${hariIni}
+Diterima dari : *${w.nama}*
+Keperluan : Iuran Kas Warga, periode ${periode}${st.nominal ? `\nJumlah : *${formatRupiah(st.nominal)}*` : ''}
+Status : *${st.lunas ? 'LUNAS' : 'BELUM TERCATAT'}*
+${garis}
+
+Yth. Bapak/Ibu *${w.nama}*,
+
+Terima kasih atas partisipasi dan ketepatan Bapak/Ibu dalam menunaikan iuran kas warga. Pembayaran tersebut telah kami terima dan dicatat pada Buku Kas Virtual Mutiara Cempaka Tahap II.
+
+Seluruh penerimaan dan penggunaan dana dapat dipantau secara terbuka oleh warga melalui portal kas.
+${portal}
+${ttd}`;
+      }
+
+      if (tpl === 'pengingat') {
+        return `*PENGINGAT IURAN KAS WARGA*
+*Perumahan Mutiara Cempaka Tahap II*
+${garis}
+
+Yth. Bapak/Ibu *${w.nama}*,
+
+Salam sejahtera. Melalui pesan ini kami menyampaikan pengingat bahwa iuran kas warga periode *${periode}* belum tercatat pada sistem kami.
+
+Apabila Bapak/Ibu telah melakukan pembayaran, mohon abaikan pesan ini dan berkenan mengirimkan bukti pembayaran agar data dapat segera kami perbarui. Apabila belum, pembayaran dapat diserahkan langsung kepada pengurus kas.
+
+Kontribusi Bapak/Ibu sangat berarti bagi kebersihan, keamanan, dan kenyamanan lingkungan kita bersama.
+${portal}
+Atas perhatian dan kerja sama Bapak/Ibu, kami ucapkan terima kasih.
+
+${ttd}`;
+      }
+
+      const r = rekapBulan(bulanIdx);
+      const saldo = totalDebet2026 - totalKredit2026;
+      return `*LAPORAN KAS WARGA - ${periode.toUpperCase()}*
+*Perumahan Mutiara Cempaka Tahap II*
+${garis}
+
+Yth. Bapak/Ibu Warga Mutiara Cempaka Tahap II,
+
+Berikut kami sampaikan ringkasan pengelolaan kas warga:
+
+*Periode ${periode}*
+- Pemasukan : ${formatRupiah(r.masuk)}
+- Pengeluaran : ${formatRupiah(r.keluar)}
+- Partisipasi iuran : ${r.lunas} dari ${r.total} warga (${r.persen}%)
+
+*Posisi kas per ${hariIni}*
+- Total pemasukan : ${formatRupiah(totalDebet2026)}
+- Total pengeluaran : ${formatRupiah(totalKredit2026)}
+- *Saldo kas : ${formatRupiah(saldo)}*
+
+Rincian transaksi beserta bukti kuitansi dapat diakses kapan saja melalui portal kas warga.
+${portal}
+Terima kasih atas kepercayaan dan partisipasi Bapak/Ibu sekalian.
+
+${ttd}`;
+    }
+
+    function openWAModal(idx) {
+      const w = (window.wargaData || [])[idx];
+      if (!w) return;
+      waCtx.idx = idx;
+      document.getElementById('wa-warga-info').textContent = `Penerima: ${w.nama}`;
+
+      const sel = document.getElementById('wa-bulan');
+      if (!sel.options.length) {
+        NAMA_BULAN.forEach((b, i) => sel.add(new Option(b, i)));
+      }
+      sel.value = new Date().getMonth();
+
+      document.getElementById('wa-nomor').value = w.hp || w.wa || w.no_hp || w.telepon || w.telp || '';
+      document.getElementById('wa-template').value = statusIuran(w, Number(sel.value)).lunas ? 'kuitansi' : 'pengingat';
+      renderWAPreview();
+      document.getElementById('wa-modal').classList.remove('hidden');
+    }
+
+    function closeWAModal() { document.getElementById('wa-modal').classList.add('hidden'); }
+
+    function renderWAPreview() {
+      const w = (window.wargaData || [])[waCtx.idx];
+      if (!w) return;
+      const tpl = document.getElementById('wa-template').value;
+      const bulanIdx = Number(document.getElementById('wa-bulan').value);
+      document.getElementById('wa-pesan').value = buildPesanWA(tpl, w, bulanIdx);
+    }
+
+    function normalisasiNomor(raw) {
+      let n = String(raw || '').replace(/\D/g, '');
+      if (!n) return '';
+      if (n.startsWith('0')) n = '62' + n.slice(1);
+      else if (n.startsWith('8')) n = '62' + n;
+      return n;
+    }
+
+    function kirimPesanWA() {
+      const text = document.getElementById('wa-pesan').value.trim();
+      if (!text) return showToast('Pesan masih kosong', 'err');
+      const nomor = normalisasiNomor(document.getElementById('wa-nomor').value);
+      window.open(`https://wa.me/${nomor}?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    function salinPesanWA() {
+      const ta = document.getElementById('wa-pesan');
+      const done = () => showToast('Pesan disalin ke clipboard');
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(ta.value).then(done).catch(() => { ta.select(); document.execCommand('copy'); done(); });
+      } else { ta.select(); document.execCommand('copy'); done(); }
     }
 
     function exportCSV() {
